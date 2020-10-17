@@ -1,23 +1,24 @@
 #include <inttypes.h>
+#include "mem.h"
 
 typedef struct CPU {
     // 8-bit V registers (V0 to VF)
-    int8_t v[16];
+    uint8_t v[16];
 
     // 16-bit Address register (I)
-    int16_t address;
+    uint16_t address;
 
     // Program counter
-    int16_t pc;
+    uint16_t pc;
 
     // Stack pointer
-    int8_t sp;
+    uint8_t sp;
 
     // Delay timer
-    int8_t dt;
+    uint8_t dt;
 
     // Sound timer
-    int8_t st;
+    uint8_t st;
 } CPU;
 
 typedef struct opcode_params {
@@ -31,13 +32,15 @@ typedef struct opcode_params {
     uint8_t kk;
 } opcode_params;
 
-enum opcode{ld, add, ldr};
+enum opcode{cls, ret, ld, add, ldr};
 
 CPU* initialize();
 
-void run(uint8_t* mem, CPU* cpu);
+void run(chip* c, CPU* cpu);
 
-void cycle(struct CPU *cpu, uint8_t* mem);
+void cycle(chip* c, CPU *cpu);
+
+void execute(chip* c, CPU* cpu, enum opcode code, opcode_params* params);
 
 enum opcode decode(uint16_t data);
 

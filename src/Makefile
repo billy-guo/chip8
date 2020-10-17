@@ -1,7 +1,7 @@
 CC=gcc
-CFLAGS=-I.
-DEPS=chip.h cpu.h
-OBJ=chip.c cpu.c
+CFLAGS=-I. -lGL -lglut
+DEPS=mem.h cpu.h
+OBJ=mem.c cpu.c
 
-test: $(OBJ)
+chip8: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)
