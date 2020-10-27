@@ -1,4 +1,5 @@
 #include <inttypes.h>
+#include <SDL.h>
 #include "mem.h"
 
 typedef struct CPU {
@@ -32,7 +33,7 @@ typedef struct opcode_params {
     uint8_t kk;
 } opcode_params;
 
-enum opcode{cls, ret, ld, add, ldr};
+enum opcode{cls, ret, jp, seb, sne, sev, call, ld, add, ldr, ldi, rng, drw};
 
 CPU* initialize();
 
@@ -45,3 +46,5 @@ void execute(chip* c, CPU* cpu, enum opcode code, opcode_params* params);
 enum opcode decode(uint16_t data);
 
 struct opcode_params* decode_params(uint16_t data);
+
+void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel);

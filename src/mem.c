@@ -38,21 +38,8 @@ int main(int argc, char** argv) {
     // Load ROM file into memory
     load_rom(chip, filename);
 
-    // for (int i = 0x200; i < EMU_MEMORY; i++) {
-    //     printf("addr %d: %x\n", i, chip->mem[i]);
-    // }
-
     // Run the ROM
     run(chip, NULL);
-
-    // // init GLUT and create Window
-	// glutInit(&argc, argv);
-	// glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-	// glutInitWindowPosition(100,100);
-	// glutInitWindowSize(320,320);
-	// glutCreateWindow(filename);
-
-    // glutMainLoop();
 
     // Free memory
     free(chip);
