@@ -33,17 +33,37 @@ typedef struct opcode_params {
     uint8_t kk;
 } opcode_params;
 
-enum opcode{cls, ret, jp, seb, sne, sev, call, ld, add, ldr, ldi, rng, drw};
-
 CPU* initialize();
 
 void run(chip* c, CPU* cpu);
 
-void cycle(chip* c, CPU *cpu);
+uint16_t cycle(chip* c, CPU *cpu);
 
-void execute(chip* c, CPU* cpu, enum opcode code, opcode_params* params);
+uint16_t execute(chip* c, CPU* cpu, uint16_t data);
 
-enum opcode decode(uint16_t data);
+// Opcode-specific methods
+void opcode_0x00e0(chip* c);
+void opcode_0x00ee(CPU* cpu);
+void opcode_0x1000(CPU* cpu, opcode_params* params);
+void opcode_0x2000(chip* c, CPU* cpu, opcode_params* params);
+void opcode_0x3000(CPU* cpu, opcode_params* params);
+void opcode_0x4000(CPU* cpu, opcode_params* params);
+void opcode_0x5000(CPU* cpu, opcode_params* params);
+void opcode_0x6000(CPU* cpu, opcode_params* params);
+void opcode_0x7000(CPU* cpu, opcode_params* params);
+void opcode_0x8xy0(CPU* cpu, opcode_params* params);
+void opcode_0x8xy1(CPU* cpu, opcode_params* params);
+void opcode_0x8xy2(CPU* cpu, opcode_params* params);
+void opcode_0x8xy3(CPU* cpu, opcode_params* params);
+void opcode_0x8xy4(CPU* cpu, opcode_params* params);
+void opcode_0x8xy5(CPU* cpu, opcode_params* params);
+void opcode_0x8xy6(CPU* cpu, opcode_params* params);
+void opcode_0x8xy7(CPU* cpu, opcode_params* params);
+void opcode_0x8xye(CPU* cpu, opcode_params* params);
+void opcode_0x9000(CPU* cpu, opcode_params* params);
+void opcode_0xa000(CPU* cpu, opcode_params* params);
+void opcode_0xc000(CPU* cpu, opcode_params* params);
+void opcode_0xd000(chip* c, CPU* cpu, opcode_params* params);
 
 struct opcode_params* decode_params(uint16_t data);
 

@@ -8,8 +8,8 @@
 #define STACK_SIZE 48
 
 // Display constants
-#define SCREEN_HEIGHT 64
-#define SCREEN_WIDTH 32
+#define SCREEN_HEIGHT 32
+#define SCREEN_WIDTH 64
 
 typedef struct chip {
     // Memory 
