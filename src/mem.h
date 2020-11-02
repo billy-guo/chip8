@@ -13,12 +13,13 @@
 
 typedef struct chip {
     // Memory 
-    char mem[EMU_MEMORY];
+    uint8_t mem[EMU_MEMORY];
 
     // Game screen
-    char game_screen[SCREEN_HEIGHT][SCREEN_WIDTH];
+    uint8_t game_screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
     // Stack memory
-    char stack[STACK_SIZE];
-
+    uint8_t stack[STACK_SIZE];
 } chip;
+
+void init_sprites(chip* c);

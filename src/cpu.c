@@ -103,8 +103,19 @@ void run(chip* c, CPU* cpu) {
     // Keep track of cycle execution time
     struct timeval tval_before, tval_after;
 
+    // Handle keyboard/mouse input
+    SDL_Event event;
+
     // CPU fetch/decode/execute loop
     for(;;) {
+
+        // Exit program
+        if (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                exit(1);
+            }
+        }
+
         // Starting time
         gettimeofday(&tval_before, NULL);
     
@@ -184,78 +195,124 @@ uint16_t cycle(chip* c, CPU *cpu) {
 uint16_t execute(chip* c, CPU* cpu, uint16_t data) {
     // Decode opcode parameters
     opcode_params* params = decode_params(data);
-    printf("[LOC %d]:   %x ", cpu->pc, data);
+    printf("[LOC %d]:   %x ", cpu->pc - 2, data);
 
     switch(data & 0xF000) {
         case 0x0000:
             switch(data & 0x00FF) {
                 case 0x00EE:
                     opcode_0x00ee(cpu);
-                    return 0x00EE;
+                    break;
                 case 0x00E0:
                     opcode_0x00e0(c);
-                    return 0x00E0;
+                    break;
             }
+            break;
         case 0x1000:
             opcode_0x1000(cpu, params);
-            return 0x1000;
+            break;
         case 0x2000:
             opcode_0x2000(c, cpu, params);
-            return 0x2000; 
+            break;
         case 0x3000:
             opcode_0x3000(cpu, params);
-            return 0x3000;
+            break;
         case 0x4000:
             opcode_0x4000(cpu, params);
-            return 0x4000;
+            break;
         case 0x5000:
             opcode_0x5000(cpu, params);
-            return 0x5000;
+            break;
         case 0x6000:
             opcode_0x6000(cpu, params);
-            return 0x6000;
+            break;
         case 0x7000:
             opcode_0x7000(cpu, params);
-            return 0x7000;
+            break;
         case 0x8000:
             switch(data & 0x000F) {
                 case 0x0000:
                     opcode_0x8xy0(cpu, params);
+                    break;
                 case 0x0001:
                     opcode_0x8xy1(cpu, params);
+                    break;
                 case 0x0002:
                     opcode_0x8xy2(cpu, params);
+                    break;
                 case 0x0003:
                     opcode_0x8xy3(cpu, params);
+                    break;
                 case 0x0004:
                     opcode_0x8xy4(cpu, params);
+                    break;
                 case 0x0005:
                     opcode_0x8xy5(cpu, params);
+                    break;
                 case 0x0006:
                     opcode_0x8xy6(cpu, params);
+                    break;
                 case 0x0007:
                     opcode_0x8xy7(cpu, params);
+                    break;
                 case 0x000e:
                     opcode_0x8xye(cpu, params);
+                    break;
             }
-            return 0x8000;
+            break;
         case 0x9000:
             opcode_0x9000(cpu, params);
-            return 0x9000;
+            break;
         case 0xA000:
             opcode_0xa000(cpu, params);
-            return 0xA000;
+            break;
+        case 0xB000:
+            opcode_0xb000(cpu, params);
+            break;
         case 0xC000:
             opcode_0xc000(cpu, params);
-            return 0xC000;
+            break;
         case 0xD000:
             opcode_0xd000(c, cpu, params);
             return 0xD000;
-        // default:
-            // printf("ERROR: OpCode %x not recognized.\n\n", code);
+        case 0xF000:
+            switch(data & 0xF0FF) {
+                case 0xF007:
+                    opcode_0xfx07(cpu, params);
+                    break;
+                case 0xF00a:
+                    opcode_0xfx0a(cpu, params);
+                    break;
+                case 0xF015:
+                    opcode_0xfx15(cpu, params);
+                    break;
+                case 0xF018:
+                    opcode_0xfx18(cpu, params);
+                    break;
+                case 0xF01E:
+                    opcode_0xfx1e(cpu, params);
+                    break;
+                case 0xF029:
+                    opcode_0xfx29(c, cpu, params);
+                    break;
+                case 0xF033:
+                    opcode_0xfx33(c, cpu, params);
+                    break;
+                case 0xF055:
+                    opcode_0xfx55(c, cpu, params);
+                    break;
+                case 0xF065:
+                    opcode_0xfx65(c, cpu, params);
+                    break;
+                default:
+                    printf("ERROR: OpCode %x not recognized.\n\n", data);
+            }
+            break;
+        default:
+            printf("ERROR: OpCode %x not recognized.\n\n", data);
     }
 
-    free(params);
+    return data;
 }
 
 opcode_params* decode_params(uint16_t data) {
@@ -285,7 +342,7 @@ void opcode_0x8xy2(CPU* cpu, opcode_params* params) {
 
 void opcode_0x8xy3(CPU* cpu, opcode_params* params) {
     printf("XOR V%d, V%d\n", params->x, params->y);
-    cpu->v[params->x] = cpu->v[params->x] ^ cpu->v[params->y];
+    cpu->v[params->x] ^= cpu->v[params->y];
 }
 
 void opcode_0x8xy4(CPU* cpu, opcode_params* params) {
@@ -372,7 +429,7 @@ void opcode_0x1000(CPU* cpu, opcode_params* params) {
 
 // Call subroutine
 void opcode_0x2000(chip* c, CPU* cpu, opcode_params* params) {
-    printf("CALL %d\n", (params->x << 8) | params->kk);
+    printf("CALL %x\n", (params->x << 8) | params->kk);
 
     // Push current program counter onto stack and jump to
     // specified address.
@@ -425,8 +482,13 @@ void opcode_0x9000(CPU* cpu, opcode_params* params) {
 }
 
 void opcode_0xa000(CPU* cpu, opcode_params* params) {
-    printf("LD I, %d\n", (params->x << 8) | params->kk);
+    printf("LD I, %x\n", (params->x << 8) | params->kk);
     cpu->address = (params->x << 8) | params->kk;
+}
+
+void opcode_0xb000(CPU* cpu, opcode_params* params) {
+    printf("JP V0, %d\n", (params->x << 8) | params->kk);
+    cpu->pc = cpu->v[0] + (params->x << 8) | params->kk;
 }
 
 void opcode_0xc000(CPU* cpu, opcode_params* params) {
@@ -447,12 +509,12 @@ void opcode_0xd000(chip* c, CPU* cpu, opcode_params* params) {
     // Loop for the different vertical lines to draw
     for (int yline = 0; yline < n; yline++) {
         // Each sprite is 8 pixels wide
-        char data = c->mem[cpu->address + yline];
+        uint8_t data = c->mem[cpu->address + yline];
 
         // Iterate over each pixel. Note that the ith pixel is the (7-i)th bit
         // for sprite data.
         for (int xpixel = 0; xpixel < 8; xpixel++) {
-            char mask = 1 << (7 - xpixel);
+            uint8_t mask = 1 << (7 - xpixel);
             if (data & mask) {
                 uint8_t x = cpu->v[params->x] + xpixel;
                 uint8_t y = cpu->v[params->y] + yline;
@@ -466,5 +528,133 @@ void opcode_0xd000(chip* c, CPU* cpu, opcode_params* params) {
                 c->game_screen[y][x] ^= 1;
             }
         }
+    }
+}
+
+// Ex9E - SKP Vx
+// Skip next instruction if key with the value of Vx is pressed.
+
+// Checks the keyboard, and if the key corresponding to the value of Vx is currently in the down position, PC is increased by 2.
+void opcode_0xe9e(CPU* cpu, opcode_params* params) {
+    printf("SKP V%d\n", params->x);
+
+    // Poll keyboard
+    SDL_Event event;
+    if (SDL_PollEvent(&event) && event.key.keysym.sym == val_to_key(cpu->v[params->x]) && event.key.state == SDL_PRESSED) {
+        cpu->pc += 2;
+    }
+}
+
+
+// ExA1 - SKNP Vx
+// Skip next instruction if key with the value of Vx is not pressed.
+
+// Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position, PC is increased by 2.
+void opcode_0xea1(CPU* cpu, opcode_params* params) {
+    printf("SKNP V%d\n", params->x);
+
+    // Poll keyboard
+    SDL_Event event;
+    if (!SDL_PollEvent(&event) || (event.key.keysym.sym == val_to_key(cpu->v[params->x]) && event.key.state == SDL_RELEASED)) {
+        cpu->pc += 2;
+    }
+}
+
+// Fx07 - LD Vx, DT
+// Set Vx = delay timer value.
+
+// The value of DT is placed into Vx.
+void opcode_0xfx07(CPU* cpu, opcode_params* params) {
+    printf("LD V%d, DT\n", params->x);
+
+    cpu->v[params->x] = cpu->dt;
+}
+
+// Fx0A - LD Vx, K
+// Wait for a key press, store the value of the key in Vx.
+
+// All execution stops until a key is pressed, then the value of that key is stored in Vx.
+void opcode_0xfx0a(CPU* cpu, opcode_params* params) {
+    printf("LD V%d, K\n", params->x);
+
+    SDL_Event event;
+    while (SDL_WaitEvent(&event) && event.key.state == SDL_PRESSED) {
+        cpu->v[params->x] = key_to_v_register(event.key);
+    }
+}
+
+// Fx15 - LD DT, Vx
+// Set delay timer = Vx.
+
+// DT is set equal to the value of Vx.
+void opcode_0xfx15(CPU* cpu, opcode_params* params) {
+    printf("LD DT, V%d\n", params->x);
+
+    cpu->dt = cpu->v[params->x];
+}
+
+// Fx18 - LD ST, Vx
+// Set sound timer = Vx.
+
+// ST is set equal to the value of Vx.
+void opcode_0xfx18(CPU* cpu, opcode_params* params) {
+    printf("LD ST, V%d\n", params->x);
+
+    cpu->st = cpu->v[params->x];
+}
+
+// Fx1E - ADD I, Vx
+// Set I = I + Vx.
+
+// The values of I and Vx are added, and the results are stored in I.
+void opcode_0xfx1e(CPU* cpu, opcode_params* params) {
+    printf("ADD I, V%d\n", params->x);
+
+    cpu->address += cpu->v[params->x];
+}
+
+// Fx29 - LD F, Vx
+// Set I = location of sprite for digit Vx.
+
+// The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx. See section 2.4, Display, for more information on the Chip-8 hexadecimal font.
+void opcode_0xfx29(chip* c, CPU* cpu, opcode_params* params) {
+    printf("LD F, V%d\n", params->x);
+
+    cpu->address = c->mem[cpu->v[params->x] * 5];
+}
+
+// Fx33 - LD B, Vx
+// Store BCD representation of Vx in memory locations I, I+1, and I+2.
+
+// The interpreter takes the decimal value of Vx, and places the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
+void opcode_0xfx33(chip* c, CPU* cpu, opcode_params* params) {
+    printf("LD B, V%d\n", params->x);
+
+    c->mem[cpu->address] = (cpu->v[params->x] / 100) % 10;
+    c->mem[cpu->address + 1] = (cpu->v[params->x] / 10) % 10;
+    c->mem[cpu->address + 2] = cpu->v[params->x]% 10;
+}
+
+// Fx55 - STRR Vx
+// Store registers V0 through Vx in memory starting at location I.
+
+// The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I.
+void opcode_0xfx55(chip* c, CPU* cpu, opcode_params* params) {
+    printf("STRR, V%d\n", params->x);
+
+    for (int i = 0; i <= params->x; i++) {
+        c->mem[cpu->address + i] = cpu->v[i];
+    }
+}
+
+// Fx65 - LD Vx, [I]
+// Read registers V0 through Vx from memory starting at location I.
+
+// The interpreter reads values from memory starting at location I into registers V0 through Vx.
+void opcode_0xfx65(chip* c, CPU* cpu, opcode_params* params) {
+    printf("STRI, V%d\n", params->x);
+
+    for (int i = 0; i <= params->x; i++) {
+        cpu->v[i] = c->mem[cpu->address + i];
     }
 }
