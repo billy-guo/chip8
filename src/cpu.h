@@ -47,7 +47,7 @@ struct opcode_params* decode_params(uint16_t data);
 void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel);
 
 void opcode_0x00e0(chip* c);
-void opcode_0x00ee(CPU* cpu);
+void opcode_0x00ee(chip* c, CPU* cpu);
 void opcode_0x1000(CPU* cpu, opcode_params* params);
 void opcode_0x2000(chip* c, CPU* cpu, opcode_params* params);
 void opcode_0x3000(CPU* cpu, opcode_params* params);
@@ -69,8 +69,8 @@ void opcode_0xa000(CPU* cpu, opcode_params* params);
 void opcode_0xb000(CPU* cpu, opcode_params* params);
 void opcode_0xc000(CPU* cpu, opcode_params* params);
 void opcode_0xd000(chip* c, CPU* cpu, opcode_params* params);
-void opcode_0xe9e(CPU* cpu, opcode_params* params);
-void opcode_0xea1(CPU* cpu, opcode_params* params);
+void opcode_0xex9e(CPU* cpu, opcode_params* params);
+void opcode_0xexa1(CPU* cpu, opcode_params* params);
 
 void opcode_0xfx07(CPU* cpu, opcode_params* params);
 void opcode_0xfx0a(CPU* cpu, opcode_params* params);

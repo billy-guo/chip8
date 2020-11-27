@@ -93,8 +93,8 @@ void run(chip* c, CPU* cpu) {
     SDL_Color colors[2];
     SDL_Color white = {0,0,0,0};
     SDL_Color black = {255, 255, 255, 255};
-    colors[0] = black;
-    colors[1] = white;
+    colors[0] = white;
+    colors[1] = black;
     SDL_SetPaletteColors(palette, colors, 0, 2);
 
     // Set surface palette
@@ -106,6 +106,16 @@ void run(chip* c, CPU* cpu) {
     // Handle keyboard/mouse input
     SDL_Event event;
 
+    // The window surface's pixels are set to our in-memory representation,
+    // so all modifications to the memory are then reflected in the graphics
+    // themselves.
+    SDL_LockSurface(surface);
+    surface->pixels = c->game_screen;
+    SDL_UnlockSurface(surface);
+
+    // Starting time
+    gettimeofday(&tval_before, NULL);
+
     // CPU fetch/decode/execute loop
     for(;;) {
 
@@ -115,9 +125,6 @@ void run(chip* c, CPU* cpu) {
                 exit(1);
             }
         }
-
-        // Starting time
-        gettimeofday(&tval_before, NULL);
     
         // Run CPU cycle
         uint16_t opcode = cycle(c, cpu);
@@ -127,31 +134,24 @@ void run(chip* c, CPU* cpu) {
             //First clear the renderer
             SDL_RenderClear(ren);
 
-            // Redraw the game screen
-            SDL_LockSurface(surface);
-            for (int y = 0; y < SCREEN_HEIGHT; y++) {
-                for (int x = 0; x < SCREEN_WIDTH; x++) {
-                    putpixel(surface, x, y, c->game_screen[y][x] * 255);
-                    // putpixel(surface, x, y, 0);
-                }
-            }
-            SDL_UnlockSurface(surface);
-
             // Grab texture from surface
             SDL_Texture *tex = SDL_CreateTextureFromSurface(ren, surface);
 
-            //Draw the texture
+            // Draw the texture
             SDL_RenderCopy(ren, tex, NULL, NULL);
 
-            //Update the screen
+            // Update the screen
             SDL_RenderPresent(ren);
-        }
 
-        // Wait for 1/60 of a second to elapse
-        gettimeofday(&tval_after, NULL);
-        float time_to_wait = 16666.7 - (tval_after.tv_usec - tval_before.tv_usec);
-        if (time_to_wait > 0) {
-            usleep(time_to_wait);
+            // Wait for 1/60 of a second to elapse
+            gettimeofday(&tval_after, NULL);
+            float time_to_wait = 16666.7 - (tval_after.tv_usec - tval_before.tv_usec);
+            if (time_to_wait > 0) {
+                usleep(time_to_wait);
+            }
+
+            // Start counting again
+            gettimeofday(&tval_before, NULL);
         }
     }
 
@@ -182,7 +182,7 @@ uint16_t cycle(chip* c, CPU *cpu) {
         return 0;
     }
 
-    // Read the opcode at the stack pointer
+    // Read the opcode at the program counter address
     uint16_t data = (uint16_t)(c->mem[cpu->pc] << 8 | c->mem[cpu->pc + 1]);
 
     // Increment program counter to go to the next opcode
@@ -201,7 +201,7 @@ uint16_t execute(chip* c, CPU* cpu, uint16_t data) {
         case 0x0000:
             switch(data & 0x00FF) {
                 case 0x00EE:
-                    opcode_0x00ee(cpu);
+                    opcode_0x00ee(c, cpu);
                     break;
                 case 0x00E0:
                     opcode_0x00e0(c);
@@ -275,6 +275,16 @@ uint16_t execute(chip* c, CPU* cpu, uint16_t data) {
         case 0xD000:
             opcode_0xd000(c, cpu, params);
             return 0xD000;
+        case 0xE000:
+            switch(data & 0xF0FF) {
+                case 0xE09E:
+                    opcode_0xex9e(cpu, params);
+                    break;
+                case 0xE0A1:
+                    opcode_0xexa1(cpu, params);
+                    break;
+            }
+            break;
         case 0xF000:
             switch(data & 0xF0FF) {
                 case 0xF007:
@@ -415,11 +425,12 @@ void opcode_0x00e0(chip* c) {
     memset(c->game_screen, 0, SCREEN_HEIGHT * SCREEN_WIDTH);
 }
 
-// Return from subroutine
-void opcode_0x00ee(CPU* cpu) {
-    printf("RET\n");
-    cpu->pc = cpu->sp;
-    cpu->sp -= 1;
+// Return from subroutine:
+// The interpreter sets the program counter to the address at the top of the stack, then subtracts 1 from the stack pointer.
+void opcode_0x00ee(chip* c, CPU* cpu) {
+    printf("  RET %x\n", c->stack[cpu->sp]);
+    cpu->pc = c->stack[cpu->sp];
+    cpu->sp--;
 }
 
 void opcode_0x1000(CPU* cpu, opcode_params* params) {
@@ -427,14 +438,17 @@ void opcode_0x1000(CPU* cpu, opcode_params* params) {
     cpu->pc = (params->x << 8) | params->kk;
 }
 
-// Call subroutine
+// Call subroutine:
+// The interpreter increments the stack pointer, then puts the current PC on the top of the stack. The PC is then set to nnn.
 void opcode_0x2000(chip* c, CPU* cpu, opcode_params* params) {
     printf("CALL %x\n", (params->x << 8) | params->kk);
 
     // Push current program counter onto stack and jump to
     // specified address.
-    c->stack[++cpu->sp] = cpu->pc;
-    cpu->pc = (params->x << 8) | params->kk;
+    cpu->sp++;
+    c->stack[cpu->sp] = cpu->pc;
+    
+    cpu->pc = (uint16_t) ((params->x << 8) | params->kk);
 }
 
 void opcode_0x3000(CPU* cpu, opcode_params* params) {
@@ -535,13 +549,16 @@ void opcode_0xd000(chip* c, CPU* cpu, opcode_params* params) {
 // Skip next instruction if key with the value of Vx is pressed.
 
 // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the down position, PC is increased by 2.
-void opcode_0xe9e(CPU* cpu, opcode_params* params) {
+void opcode_0xex9e(CPU* cpu, opcode_params* params) {
     printf("SKP V%d\n", params->x);
 
     // Poll keyboard
     SDL_Event event;
-    if (SDL_PollEvent(&event) && event.key.keysym.sym == val_to_key(cpu->v[params->x]) && event.key.state == SDL_PRESSED) {
-        cpu->pc += 2;
+    if (SDL_PollEvent(&event)) {
+        printf("KEY PRESSED %d\n", event.key.keysym.sym);
+        if (event.key.keysym.sym == val_to_key(cpu->v[params->x]) && event.key.state == SDL_PRESSED) {
+            cpu->pc += 2;
+        }
     }
 }
 
@@ -550,7 +567,7 @@ void opcode_0xe9e(CPU* cpu, opcode_params* params) {
 // Skip next instruction if key with the value of Vx is not pressed.
 
 // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position, PC is increased by 2.
-void opcode_0xea1(CPU* cpu, opcode_params* params) {
+void opcode_0xexa1(CPU* cpu, opcode_params* params) {
     printf("SKNP V%d\n", params->x);
 
     // Poll keyboard

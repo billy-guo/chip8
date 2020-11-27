@@ -5,7 +5,7 @@
 #define ROM_START 512
 
 // Stack stores up to 48 bytes
-#define STACK_SIZE 48
+#define STACK_SIZE 24
 
 // Display constants
 #define SCREEN_HEIGHT 32
@@ -19,7 +19,7 @@ typedef struct chip {
     uint8_t game_screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
     // Stack memory
-    uint8_t stack[STACK_SIZE];
+    uint16_t stack[STACK_SIZE];
 } chip;
 
 void init_sprites(chip* c);
