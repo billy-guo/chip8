@@ -76,7 +76,7 @@ void run(chip* c, CPU* cpu) {
 
     // Initialize graphics
     if (SDL_Init(SDL_INIT_VIDEO) != 0){
-        printf("SDL_Init Error: %s", SDL_GetError());
+        // printf("SDL_Init Error: %s", SDL_GetError());
         return;
     }
 
@@ -101,7 +101,7 @@ void run(chip* c, CPU* cpu) {
     SDL_SetSurfacePalette(surface, palette);
 
     // Keep track of cycle execution time
-    struct timeval tval_before, tval_after;
+    struct timeval cpu_clock_before, timer_clock_before, screen_clock_before, current_time;
 
     // Handle keyboard/mouse input
     SDL_Event event;
@@ -114,7 +114,9 @@ void run(chip* c, CPU* cpu) {
     SDL_UnlockSurface(surface);
 
     // Starting time
-    gettimeofday(&tval_before, NULL);
+    gettimeofday(&cpu_clock_before, NULL);
+    gettimeofday(&timer_clock_before, NULL);
+    gettimeofday(&screen_clock_before, NULL);
 
     // CPU fetch/decode/execute loop
     for(;;) {
@@ -129,9 +131,11 @@ void run(chip* c, CPU* cpu) {
         // Run CPU cycle
         uint16_t opcode = cycle(c, cpu);
 
-        // Redraw screen, if necessary.
+        // Redraw screen; make the program wait until a full frame has passed so the emulator doesn't exceed
+        // the expected speed of the original hardware.
+        gettimeofday(&current_time, NULL);
         if (opcode == 0xD000) {
-            //First clear the renderer
+            // First clear the renderer
             SDL_RenderClear(ren);
 
             // Grab texture from surface
@@ -143,15 +147,29 @@ void run(chip* c, CPU* cpu) {
             // Update the screen
             SDL_RenderPresent(ren);
 
-            // Wait for 1/60 of a second to elapse
-            gettimeofday(&tval_after, NULL);
-            float time_to_wait = 16666.7 - (tval_after.tv_usec - tval_before.tv_usec);
-            if (time_to_wait > 0) {
-                usleep(time_to_wait);
-            }
+        } else {
+            // Sound/delay timer
+            float timer_wait_time = (1000000.0 / TIMER_CLOCK_SPEED) - (current_time.tv_usec - timer_clock_before.tv_usec);
+            if (timer_wait_time <= 0) {
+                if (cpu->dt > 0) {
+                    cpu->dt--;
+                }
 
-            // Start counting again
-            gettimeofday(&tval_before, NULL);
+                if (cpu->st > 0) {
+                    // TODO: play CHIP-8 sound
+                    printf("\a");
+
+                    cpu->st--;
+                }
+
+                gettimeofday(&timer_clock_before, NULL);
+            }
+        }
+
+        float cpu_wait_time = (1000000.0 / CPU_CLOCK_SPEED) - (current_time.tv_usec - cpu_clock_before.tv_usec);
+        if (cpu_wait_time > 0) {
+            usleep(cpu_wait_time);
+            gettimeofday(&cpu_clock_before, NULL);
         }
     }
 
@@ -168,10 +186,10 @@ void run(chip* c, CPU* cpu) {
 }
 
 void print_stuff(uint16_t data, CPU* cpu) {
-    printf("hex representation: %x\n", data);
-    printf("v0: %d\n", cpu->v[0]);
-    printf("v1: %d\n", cpu->v[1]);
-    printf("v3: %d\n\n", cpu->v[3]);
+    // printf("hex representation: %x\n", data);
+    // printf("v0: %d\n", cpu->v[0]);
+    // printf("v1: %d\n", cpu->v[1]);
+    // printf("v3: %d\n\n", cpu->v[3]);
 }
 
 // Represents a single CPU clock cycle. Returns the opcode that was
@@ -195,7 +213,7 @@ uint16_t cycle(chip* c, CPU *cpu) {
 uint16_t execute(chip* c, CPU* cpu, uint16_t data) {
     // Decode opcode parameters
     opcode_params* params = decode_params(data);
-    printf("[LOC %d]:   %x ", cpu->pc - 2, data);
+    // printf("[LOC %d]:   %x ", cpu->pc - 2, data);
 
     switch(data & 0xF000) {
         case 0x0000:
@@ -336,27 +354,27 @@ opcode_params* decode_params(uint16_t data) {
 }
 
 void opcode_0x8xy0(CPU* cpu, opcode_params* params) {
-    printf("LD V%d, V%d\n", params->x, params->y);
+    // printf("LD V%d, V%d\n", params->x, params->y);
     cpu->v[params->x] = cpu->v[params->y];
 }
 
 void opcode_0x8xy1(CPU* cpu, opcode_params* params) {
-    printf("OR V%d, V%d\n", params->x, params->y);
+    // printf("OR V%d, V%d\n", params->x, params->y);
     cpu->v[params->x] = cpu->v[params->x] | cpu->v[params->y];
 }
 
 void opcode_0x8xy2(CPU* cpu, opcode_params* params) {
-    printf("AND V%d, V%d\n", params->x, params->y);
+    // printf("AND V%d, V%d\n", params->x, params->y);
     cpu->v[params->x] = cpu->v[params->x] & cpu->v[params->y];
 }
 
 void opcode_0x8xy3(CPU* cpu, opcode_params* params) {
-    printf("XOR V%d, V%d\n", params->x, params->y);
+    // printf("XOR V%d, V%d\n", params->x, params->y);
     cpu->v[params->x] ^= cpu->v[params->y];
 }
 
 void opcode_0x8xy4(CPU* cpu, opcode_params* params) {
-    printf("ADD V%d, V%d\n", params->x, params->y);
+    // printf("ADD V%d, V%d\n", params->x, params->y);
     uint16_t sum = cpu->v[params->x] + cpu->v[params->y];
 
     // Lowest 8 bits are added to the Vx register, modify carry register as needed
@@ -368,7 +386,7 @@ void opcode_0x8xy4(CPU* cpu, opcode_params* params) {
 }
 
 void opcode_0x8xy5(CPU* cpu, opcode_params* params) {
-    printf("SUB V%d, V%d\n", params->x, params->y);
+    // printf("SUB V%d, V%d\n", params->x, params->y);
 
     // Set carry bit to 1 if Vx > Vy and 0 otherwise
     if (cpu->v[params->x] > cpu->v[params->y]) {
@@ -381,7 +399,7 @@ void opcode_0x8xy5(CPU* cpu, opcode_params* params) {
 }
 
 void opcode_0x8xy6(CPU* cpu, opcode_params* params) {
-    printf("SHR V%d, V%d\n", params->x, params->y);
+    // printf("SHR V%d, V%d\n", params->x, params->y);
 
     // Set Vf to 1 if Vx's least significant bit is 1
     if (cpu->v[params->x] & 1 == 1) {
@@ -394,7 +412,7 @@ void opcode_0x8xy6(CPU* cpu, opcode_params* params) {
 }
 
 void opcode_0x8xy7(CPU* cpu, opcode_params* params) {
-    printf("SUBN V%d, V%d\n", params->x, params->y);
+    // printf("SUBN V%d, V%d\n", params->x, params->y);
 
     // Set carry bit to 1 if Vx < Vy and 0 otherwise
     if (cpu->v[params->x] < cpu->v[params->y]) {
@@ -407,7 +425,7 @@ void opcode_0x8xy7(CPU* cpu, opcode_params* params) {
 }
 
 void opcode_0x8xye(CPU* cpu, opcode_params* params) {
-    printf("SHL V%d, V%d\n", params->x, params->y);
+    // printf("SHL V%d, V%d\n", params->x, params->y);
 
     // Set Vf to 1 if Vx's least significant bit is 1
     if (cpu->v[params->x] >> 7 == 1) {
@@ -421,27 +439,27 @@ void opcode_0x8xye(CPU* cpu, opcode_params* params) {
 
 // Clear the game screen
 void opcode_0x00e0(chip* c) {
-    printf("CLS\n");
+    // printf("CLS\n");
     memset(c->game_screen, 0, SCREEN_HEIGHT * SCREEN_WIDTH);
 }
 
 // Return from subroutine:
 // The interpreter sets the program counter to the address at the top of the stack, then subtracts 1 from the stack pointer.
 void opcode_0x00ee(chip* c, CPU* cpu) {
-    printf("  RET %x\n", c->stack[cpu->sp]);
+    // printf("  RET %x\n", c->stack[cpu->sp]);
     cpu->pc = c->stack[cpu->sp];
     cpu->sp--;
 }
 
 void opcode_0x1000(CPU* cpu, opcode_params* params) {
-    printf("JP %d\n", (params->x << 8) | params->kk);
+    // printf("JP %d\n", (params->x << 8) | params->kk);
     cpu->pc = (params->x << 8) | params->kk;
 }
 
 // Call subroutine:
 // The interpreter increments the stack pointer, then puts the current PC on the top of the stack. The PC is then set to nnn.
 void opcode_0x2000(chip* c, CPU* cpu, opcode_params* params) {
-    printf("CALL %x\n", (params->x << 8) | params->kk);
+    // printf("CALL %x\n", (params->x << 8) | params->kk);
 
     // Push current program counter onto stack and jump to
     // specified address.
@@ -452,7 +470,7 @@ void opcode_0x2000(chip* c, CPU* cpu, opcode_params* params) {
 }
 
 void opcode_0x3000(CPU* cpu, opcode_params* params) {
-    printf("SE V%d, %d\n", params->x, params->kk);
+    // printf("SE V%d, %d\n", params->x, params->kk);
 
     // Compares V-register x with kk and increments the PC if the two values are equal
     if (cpu->v[params->x] == params->kk) {
@@ -461,7 +479,7 @@ void opcode_0x3000(CPU* cpu, opcode_params* params) {
 }
 
 void opcode_0x4000(CPU* cpu, opcode_params* params) {
-    printf("SNE V%d, %d\n", params->x, params->kk);
+    // printf("SNE V%d, %d\n", params->x, params->kk);
 
     // Compares V-register x with kk and increments the PC if the two values are unequal
     if (cpu->v[params->x] != params->kk) {
@@ -470,7 +488,7 @@ void opcode_0x4000(CPU* cpu, opcode_params* params) {
 }
 
 void opcode_0x5000(CPU* cpu, opcode_params* params) {
-    printf("SE V%d, V%d\n", params->x, params->y);
+    // printf("SE V%d, V%d\n", params->x, params->y);
 
     // Compares V-register x with V-register y with kk and increments the PC if equal
     if (cpu->v[params->x] == cpu->v[params->y]) {
@@ -479,40 +497,40 @@ void opcode_0x5000(CPU* cpu, opcode_params* params) {
 }
 
 void opcode_0x6000(CPU* cpu, opcode_params* params) {
-    printf("LD V%d, %d\n", params->x, params->kk);
+    // printf("LD V%d, %d\n", params->x, params->kk);
     cpu->v[params->x] = params->kk;
 }
 
 void opcode_0x7000(CPU* cpu, opcode_params* params) {
-    printf("ADD V%d, %d\n", params->x, params->kk);
+    // printf("ADD V%d, %d\n", params->x, params->kk);
     cpu->v[params->x] += params->kk;
 }
 
 void opcode_0x9000(CPU* cpu, opcode_params* params) {
-    printf("SNE V%d, V%d\n", params->x, params->y);
+    // printf("SNE V%d, V%d\n", params->x, params->y);
     if (cpu->v[params->x] != cpu->v[params->y]) {
         cpu->pc += 2;
     }
 }
 
 void opcode_0xa000(CPU* cpu, opcode_params* params) {
-    printf("LD I, %x\n", (params->x << 8) | params->kk);
+    // printf("LD I, %x\n", (params->x << 8) | params->kk);
     cpu->address = (params->x << 8) | params->kk;
 }
 
 void opcode_0xb000(CPU* cpu, opcode_params* params) {
-    printf("JP V0, %d\n", (params->x << 8) | params->kk);
+    // printf("JP V0, %d\n", (params->x << 8) | params->kk);
     cpu->pc = cpu->v[0] + (params->x << 8) | params->kk;
 }
 
 void opcode_0xc000(CPU* cpu, opcode_params* params) {
-    printf("RND V%d, %d\n", params->x, params->kk);
+    // printf("RND V%d, %d\n", params->x, params->kk);
     cpu->v[params->x] = (rand() % 255) & params->kk;
 }
 
 // Draw a sprite on the screen
 void opcode_0xd000(chip* c, CPU* cpu, opcode_params* params) {
-    printf("DRW V%d, V%d, %d\n", params->x, params->y, params->kk & 0x000f);
+    // printf("DRW V%d, V%d, %d\n", params->x, params->y, params->kk & 0x000f);
 
     // Set 0xF-th V register to 0
     cpu->v[0xf] = 0;
@@ -550,15 +568,12 @@ void opcode_0xd000(chip* c, CPU* cpu, opcode_params* params) {
 
 // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the down position, PC is increased by 2.
 void opcode_0xex9e(CPU* cpu, opcode_params* params) {
-    printf("SKP V%d\n", params->x);
+    // printf("SKP V%d\n", params->x);
 
-    // Poll keyboard
-    SDL_Event event;
-    if (SDL_PollEvent(&event)) {
-        printf("KEY PRESSED %d\n", event.key.keysym.sym);
-        if (event.key.keysym.sym == val_to_key(cpu->v[params->x]) && event.key.state == SDL_PRESSED) {
-            cpu->pc += 2;
-        }
+    // Check keyboard
+    const uint8_t *state = SDL_GetKeyboardState(NULL);
+    if (state[val_to_key(cpu->v[params->x])]) {
+        cpu->pc += 2;
     }
 }
 
@@ -568,11 +583,11 @@ void opcode_0xex9e(CPU* cpu, opcode_params* params) {
 
 // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position, PC is increased by 2.
 void opcode_0xexa1(CPU* cpu, opcode_params* params) {
-    printf("SKNP V%d\n", params->x);
+    // printf("SKNP V%d\n", params->x);
 
-    // Poll keyboard
-    SDL_Event event;
-    if (!SDL_PollEvent(&event) || (event.key.keysym.sym == val_to_key(cpu->v[params->x]) && event.key.state == SDL_RELEASED)) {
+    // Check keyboard
+    const uint8_t *state = SDL_GetKeyboardState(NULL);
+    if (!state[val_to_key(cpu->v[params->x])]) {
         cpu->pc += 2;
     }
 }
@@ -582,7 +597,7 @@ void opcode_0xexa1(CPU* cpu, opcode_params* params) {
 
 // The value of DT is placed into Vx.
 void opcode_0xfx07(CPU* cpu, opcode_params* params) {
-    printf("LD V%d, DT\n", params->x);
+    // printf("LD V%d, DT\n", params->x);
 
     cpu->v[params->x] = cpu->dt;
 }
@@ -592,7 +607,7 @@ void opcode_0xfx07(CPU* cpu, opcode_params* params) {
 
 // All execution stops until a key is pressed, then the value of that key is stored in Vx.
 void opcode_0xfx0a(CPU* cpu, opcode_params* params) {
-    printf("LD V%d, K\n", params->x);
+    // printf("LD V%d, K\n", params->x);
 
     SDL_Event event;
     while (SDL_WaitEvent(&event) && event.key.state == SDL_PRESSED) {
@@ -605,7 +620,7 @@ void opcode_0xfx0a(CPU* cpu, opcode_params* params) {
 
 // DT is set equal to the value of Vx.
 void opcode_0xfx15(CPU* cpu, opcode_params* params) {
-    printf("LD DT, V%d\n", params->x);
+    // printf("LD DT, V%d\n", params->x);
 
     cpu->dt = cpu->v[params->x];
 }
@@ -615,7 +630,7 @@ void opcode_0xfx15(CPU* cpu, opcode_params* params) {
 
 // ST is set equal to the value of Vx.
 void opcode_0xfx18(CPU* cpu, opcode_params* params) {
-    printf("LD ST, V%d\n", params->x);
+    // printf("LD ST, V%d\n", params->x);
 
     cpu->st = cpu->v[params->x];
 }
@@ -625,7 +640,7 @@ void opcode_0xfx18(CPU* cpu, opcode_params* params) {
 
 // The values of I and Vx are added, and the results are stored in I.
 void opcode_0xfx1e(CPU* cpu, opcode_params* params) {
-    printf("ADD I, V%d\n", params->x);
+    // printf("ADD I, V%d\n", params->x);
 
     cpu->address += cpu->v[params->x];
 }
@@ -635,7 +650,7 @@ void opcode_0xfx1e(CPU* cpu, opcode_params* params) {
 
 // The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx. See section 2.4, Display, for more information on the Chip-8 hexadecimal font.
 void opcode_0xfx29(chip* c, CPU* cpu, opcode_params* params) {
-    printf("LD F, V%d\n", params->x);
+    // printf("LD F, V%d\n", params->x);
 
     cpu->address = c->mem[cpu->v[params->x] * 5];
 }
@@ -645,7 +660,7 @@ void opcode_0xfx29(chip* c, CPU* cpu, opcode_params* params) {
 
 // The interpreter takes the decimal value of Vx, and places the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
 void opcode_0xfx33(chip* c, CPU* cpu, opcode_params* params) {
-    printf("LD B, V%d\n", params->x);
+    // printf("LD B, V%d\n", params->x);
 
     c->mem[cpu->address] = (cpu->v[params->x] / 100) % 10;
     c->mem[cpu->address + 1] = (cpu->v[params->x] / 10) % 10;
@@ -657,7 +672,7 @@ void opcode_0xfx33(chip* c, CPU* cpu, opcode_params* params) {
 
 // The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I.
 void opcode_0xfx55(chip* c, CPU* cpu, opcode_params* params) {
-    printf("STRR, V%d\n", params->x);
+    // printf("STRR, V%d\n", params->x);
 
     for (int i = 0; i <= params->x; i++) {
         c->mem[cpu->address + i] = cpu->v[i];
@@ -669,7 +684,7 @@ void opcode_0xfx55(chip* c, CPU* cpu, opcode_params* params) {
 
 // The interpreter reads values from memory starting at location I into registers V0 through Vx.
 void opcode_0xfx65(chip* c, CPU* cpu, opcode_params* params) {
-    printf("STRI, V%d\n", params->x);
+    // printf("STRI, V%d\n", params->x);
 
     for (int i = 0; i <= params->x; i++) {
         cpu->v[i] = c->mem[cpu->address + i];

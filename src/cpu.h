@@ -3,6 +3,11 @@
 #include "mem.h"
 #include "instructions.h"
 
+// CPU clock speed in hertz
+#define CPU_CLOCK_SPEED 1000
+#define TIMER_CLOCK_SPEED 60
+#define FRAMES_PER_SECOND 60
+
 typedef struct CPU {
     // 8-bit V registers (V0 to VF)
     uint8_t v[16];

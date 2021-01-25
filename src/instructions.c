@@ -4,37 +4,37 @@
 SDL_KeyCode val_to_key(int value) {
     switch(value) {
         case 0:
-            return SDLK_1;
+            return SDL_SCANCODE_1;
         case 1:
-            return SDLK_2;
+            return SDL_SCANCODE_2;
         case 2:
-            return SDLK_3;
+            return SDL_SCANCODE_3;
         case 3:
-            return SDLK_4;
+            return SDL_SCANCODE_4;
         case 4:
-            return SDLK_q;
+            return SDL_SCANCODE_Q;
         case 5:
-            return SDLK_w;
+            return SDL_SCANCODE_W;
         case 6:
-            return SDLK_e;
+            return SDL_SCANCODE_E;
         case 7:
-            return SDLK_r;
+            return SDL_SCANCODE_R;
         case 8:
-            return SDLK_a;
+            return SDL_SCANCODE_A;
         case 9:
-            return SDLK_s;
+            return SDL_SCANCODE_S;
         case 10:
-            return SDLK_d;
+            return SDL_SCANCODE_D;
         case 11:
-            return SDLK_f;
+            return SDL_SCANCODE_F;
         case 12:
-            return SDLK_z;
+            return SDL_SCANCODE_Z;
         case 13:
-            return SDLK_x;
+            return SDL_SCANCODE_X;
         case 14:
-            return SDLK_c;
+            return SDL_SCANCODE_C;
         case 15:
-            return SDLK_v; 
+            return SDL_SCANCODE_V; 
         default:
             printf("ERROR: Invalid value %d\n", value);
     }
@@ -43,37 +43,37 @@ SDL_KeyCode val_to_key(int value) {
 // Returns the corresponding V index of the given keyboard key
 int key_to_v_register(SDL_KeyboardEvent event) {
     switch(event.keysym.sym) {
-        case SDLK_1:
+        case SDL_SCANCODE_1:
             return 0;
-        case SDLK_2:
+        case SDL_SCANCODE_2:
             return 1;
-        case SDLK_3:
+        case SDL_SCANCODE_3:
             return 2;
-        case SDLK_4:
+        case SDL_SCANCODE_4:
             return 3;
-        case SDLK_q:
+        case SDL_SCANCODE_Q:
             return 4;
-        case SDLK_w:
+        case SDL_SCANCODE_W:
             return 5;
-        case SDLK_e:
+        case SDL_SCANCODE_E:
             return 6;
-        case SDLK_r:
+        case SDL_SCANCODE_R:
             return 7;
-        case SDLK_a:
+        case SDL_SCANCODE_A:
             return 8;
-        case SDLK_s:
+        case SDL_SCANCODE_S:
             return 9;
-        case SDLK_d:
+        case SDL_SCANCODE_D:
             return 10;
-        case SDLK_f:
+        case SDL_SCANCODE_F:
             return 11;
-        case SDLK_z:
+        case SDL_SCANCODE_Z:
             return 12;
-        case SDLK_x:
+        case SDL_SCANCODE_X:
             return 13;
-        case SDLK_c:
+        case SDL_SCANCODE_C:
             return 14;
-        case SDLK_v:
+        case SDL_SCANCODE_V:
             return 15;
     }
 }
